@@ -14,17 +14,17 @@ from email.mime.multipart import MIMEMultipart
 from anthropic import Anthropic
 import socket
    
-   try:
-       socket.create_connection(("smtp.gmail.com", 587), timeout=5)
-       print("✓ Can reach Gmail SMTP")
-   except Exception as e:
-       print(f"✗ Cannot reach Gmail: {e}")
+try:
+   socket.create_connection(("smtp.gmail.com", 587), timeout=5)
+   print("✓ Can reach Gmail SMTP")
+except Exception as e:
+   print(f"✗ Cannot reach Gmail: {e}")
    
-   try:
-       socket.gethostbyname("gmail.com")
-       print("✓ DNS resolution works")
-   except Exception as e:
-       print(f"✗ DNS failed: {e}")
+try:
+   socket.gethostbyname("gmail.com")
+   print("✓ DNS resolution works")
+except Exception as e:
+   print(f"✗ DNS failed: {e}")
 
 # Initialize the Anthropic client
 client = Anthropic()
