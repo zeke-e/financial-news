@@ -156,7 +156,7 @@ def send_email(analysis, recipient_email):
         
         # Create message
         message = MIMEMultipart()
-        message["From"] = "zeke.abramowicz8@gmail.com"
+        message["From"] = "financial-news-analyzer@financial-news-analyzer-489100.iam.gserviceaccount.com"
         message["To"] = recipient_email
         message["Subject"] = f"Daily Financial News Analysis - {datetime.now().strftime('%B %d, %Y')}"
         
