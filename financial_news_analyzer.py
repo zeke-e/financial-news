@@ -161,13 +161,19 @@ def send_email(analysis, recipient_email):
         )
         
         sg = SendGridAPIClient(sendgrid_api_key)
+        print(f"✓ SendGrid client initialized")
+        print(f"✓ API key present: {len(sendgrid_api_key)} characters")
+        
         response = sg.send(message)
         
-        print(f"✓ Email sent successfully to {recipient_email}")
+        print(f"✓ Email sent successfully (status: {response.status_code})")
         return True
         
     except Exception as e:
         print(f"Error sending email: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
         return False
        
 def save_analysis(analysis):
