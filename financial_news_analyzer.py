@@ -13,8 +13,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from anthropic import Anthropic
 import socket
-from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
 import base64
    
 try:
