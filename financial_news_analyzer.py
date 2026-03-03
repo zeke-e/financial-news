@@ -13,6 +13,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from anthropic import Anthropic
 import socket
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+import base64
    
 try:
    socket.create_connection(("smtp.gmail.com", 587), timeout=5)
@@ -129,23 +132,34 @@ Focus on what matters for fixed income markets, include key takeaways and potent
 
 
 def send_email(analysis, recipient_email):
-    """Send the analysis via Gmail"""
-    sender_email = "zeke.abramowicz8@gmail.com"
-    app_password = os.getenv("GMAIL_APP_PASSWORD")
+    """Send the analysis via Gmail API"""
+    from google.oauth2.service_account import Credentials
+    from googleapiclient.discovery import build
+    import base64
     
-    if not app_password:
-        print("Error: GMAIL_APP_PASSWORD environment variable not set")
-        print("Set it with: export GMAIL_APP_PASSWORD='your_16_char_password'")
+    credentials_json = os.getenv("GMAIL_CREDENTIALS")
+    
+    if not credentials_json:
+        print("Error: GMAIL_CREDENTIALS environment variable not set")
         return False
 
     try:
+        # Load credentials
+        credentials_dict = json.loads(credentials_json)
+        credentials = Credentials.from_service_account_info(
+            credentials_dict,
+            scopes=['https://www.googleapis.com/auth/gmail.send']
+        )
+        
+        # Build Gmail service
+        service = build('gmail', 'v1', credentials=credentials)
+        
         # Create message
         message = MIMEMultipart()
-        message["From"] = sender_email
+        message["From"] = "zeke.abramowicz8@gmail.com"
         message["To"] = recipient_email
         message["Subject"] = f"Daily Financial News Analysis - {datetime.now().strftime('%B %d, %Y')}"
         
-        # Create HTML body
         html_body = f"""
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -163,21 +177,16 @@ def send_email(analysis, recipient_email):
         
         message.attach(MIMEText(html_body, "html"))
         
-        # Connect to Gmail and send
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, app_password)
-            server.send_message(message)
+        # Send via Gmail API
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+        service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
         
         print(f"Email sent successfully to {recipient_email}")
         return True
         
-    except smtplib.SMTPAuthenticationError:
-        print("Error: Gmail authentication failed. Check your app password.")
-        return False
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
-
 
 def save_analysis(analysis):
     """Save analysis to a file with timestamp"""
