@@ -141,7 +141,7 @@ def send_email(analysis, recipient_email):
     
     try:
         message = Mail(
-            from_email="financial-news-bot@zeke.dev",
+            from_email="zeke.abramowicz8@gmail.com",
             to_emails=recipient_email,
             subject=f"Daily Financial News Analysis - {datetime.now().strftime('%B %d, %Y')}",
             html_content=f"""
