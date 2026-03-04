@@ -1,0 +1,27 @@
+name: Daily Macro Briefing
+
+on:
+  schedule:
+    - cron: '0 13 * * 1-5'  # 8 AM EST, Monday–Friday only
+  workflow_dispatch:          # Allows manual runs from the Actions tab
+
+jobs:
+  run-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic requests
+
+      - name: Run analysis
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python financial_analyzer.py
