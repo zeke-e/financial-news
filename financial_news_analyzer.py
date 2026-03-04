@@ -1,118 +1,61 @@
 #!/usr/bin/env python3
 """
 Financial News Analyzer with Claude
-Fetches daily financial news and generates macro rates-focused analysis
+Uses Claude's built-in web search to find and analyze today's macro news
 Sends analysis via email
 """
 
 import os
-import json
 import smtplib
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from anthropic import Anthropic
+import anthropic
 
-# Initialize the Anthropic client
-client = Anthropic()
+client = anthropic.Anthropic()
 
 
-def fetch_financial_news():
+def analyze_with_claude():
     """
-    Fetch financial news from NewsAPI.
-    Requires a free API key from https://newsapi.org/
+    Use Claude with web search to find and analyze today's macro news
     """
-    try:
-        import requests
-    except ImportError:
-        print("Error: 'requests' library not found.")
-        return None
+    today = datetime.now().strftime("%B %d, %Y")
 
-    api_key = os.getenv("NEWS_API_KEY")
-    if not api_key:
-        print("Error: NEWS_API_KEY environment variable not set")
-        return None
+    prompt = f"""Today is {today}. Please search the web for today's most important macro financial news and then provide a detailed briefing covering:
 
-    url = "https://newsapi.org/v2/everything"
-    params = {
-        "q": "(Federal Reserve OR macro OR inflation OR interest rates OR currency OR bonds OR treasury OR GDP)",
-        "sortBy": "publishedAt",
-        "language": "en",
-        "pageSize": 10,
-        "apiKey": api_key,
-    }
+1. **Key Market Movers**: The most significant stories moving markets today and their immediate implications
+2. **Fed & Rates**: Any Fed speak, rate expectations, or Treasury market developments
+3. **Inflation & Economic Data**: Any data releases today (CPI, PPI, jobs, GDP, PMI, etc.)
+4. **FX & Cross-Asset**: Notable currency moves and cross-asset implications
+5. **Trading Insights**: Concrete trading themes or opportunities from today's news
+6. **Tail Risks**: Key risks or unknowns to watch in the near term
 
-    try:
-        import requests
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
+Be specific — include actual numbers, yield levels, and price moves where available. This is for a macro rates trader at a bulge bracket bank."""
 
-        if data["status"] != "ok":
-            print(f"Error from NewsAPI: {data.get('message', 'Unknown error')}")
-            return None
+    response = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=4000,
+        tools=[{"type": "web_search_20250305", "name": "web_search"}],
+        system="""You are a macro rates trading analyst at a bulge bracket investment bank. 
+You have deep expertise in fixed income, rates trading, Fed policy, and cross-asset macro.
+When analyzing news, always include specific data points, yield levels, and price moves.
+Your briefings are read by senior traders who need actionable, specific insights — not generic commentary.""",
+        messages=[{"role": "user", "content": prompt}],
+    )
 
-        return data.get("articles", [])
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching news: {e}")
-        return None
+    # Extract the final text response (after web search tool use)
+    analysis = ""
+    for block in response.content:
+        if block.type == "text":
+            analysis += block.text
+
+    return analysis
 
 
-def format_news_for_analysis(articles):
-    """Format articles into a readable format for Claude analysis"""
-    if not articles:
-        return "No financial news articles found."
-
-    formatted_news = "## Financial News Summary\n\n"
-    for i, article in enumerate(articles, 1):
-        formatted_news += f"**Article {i}: {article['title']}**\n"
-        formatted_news += f"Source: {article['source']['name']}\n"
-        formatted_news += f"Published: {article['publishedAt']}\n"
-        formatted_news += f"Summary: {article.get('description', 'No description available')}\n\n"
-
-    return formatted_news
-
-
-def analyze_with_claude(news_content):
-    """
-    Send news to Claude for macro rates-focused analysis
-    """
-    system_prompt = """You are a macro rates trading analyst at a bulge bracket investment bank.
-Your role is to analyze daily financial news and provide insights relevant to:
-- Federal Reserve policy and interest rate decisions
-- Treasury market dynamics and yield curve implications
-- Currency markets and FX implications
-- Inflation data and economic indicators
-- Geopolitical events affecting macro markets
-- Cross-asset correlations and trading implications
-
-Provide a concise but insightful analysis that would be useful for a rates trader.
-Focus on what matters for fixed income markets, include key takeaways and potential trading implications."""
-
-    user_message = f"""Here's today's financial news. Please provide:
-1. **Key Market Movers**: The most significant stories and their immediate implications
-2. **Macro Implications**: How these developments affect rates, inflation expectations, and Fed policy
-3. **Market Technicals**: Any significant technical levels or chart implications mentioned
-4. **Trading Insights**: Potential trading themes or opportunities this creates
-5. **Tail Risks**: Any risks or unknowns to watch
-
-{news_content}"""
-
-    try:
-        message = client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=2000,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
-        return message.content[0].text
-    except Exception as e:
-        return f"Error calling Claude API: {e}"
-
-
-def send_email(analysis, recipient_email):
+def send_email(analysis):
     """Send the analysis via Gmail"""
     sender_email = "zeke.abramowicz8@gmail.com"
+    recipient_email = "zeke.abramowicz8@gmail.com"
     app_password = os.getenv("GMAIL_APP_PASSWORD")
 
     if not app_password:
@@ -135,7 +78,7 @@ def send_email(analysis, recipient_email):
 {analysis}
                 </div>
                 <hr style="border: 1px solid #eee;">
-                <p style="color: #999; font-size: 12px;">Generated by Claude analyzing today's financial news.</p>
+                <p style="color: #999; font-size: 12px;">Generated by Claude with live web search.</p>
             </body>
         </html>
         """
@@ -158,35 +101,21 @@ def send_email(analysis, recipient_email):
 
 
 def main():
-    """Main execution flow"""
     print("=" * 60)
-    print("Financial News Analyzer with Claude")
+    print("Daily Macro Briefing — Claude with Web Search")
     print(f"Run time: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}")
     print("=" * 60)
 
-    # Fetch news
-    print("Fetching financial news...")
-    articles = fetch_financial_news()
-
-    if not articles:
-        print("Failed to fetch news. Exiting.")
-        return
-
-    print(f"Found {len(articles)} relevant articles")
-
-    # Format and analyze
-    formatted_news = format_news_for_analysis(articles)
-    print("Analyzing with Claude...")
-    analysis = analyze_with_claude(formatted_news)
+    print("Searching and analyzing today's macro news...")
+    analysis = analyze_with_claude()
 
     print("\n" + "=" * 60)
-    print("ANALYSIS RESULTS")
+    print("ANALYSIS")
     print("=" * 60)
     print(analysis)
 
-    # Send email
     print("\nSending email...")
-    send_email(analysis, "zeke.abramowicz8@gmail.com")
+    send_email(analysis)
 
 
 if __name__ == "__main__":
