@@ -2,7 +2,7 @@ name: Daily Macro Briefing
 
 on:
   schedule:
-    - cron: '45 12 * * 1-5'  # 8 AM EST, Monday–Friday only
+    - cron: '45 10 * * 1-5'  # 5:45 AM EST, Monday–Friday only
   workflow_dispatch:          # Allows manual runs from the Actions tab
 
 jobs:
